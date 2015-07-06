@@ -66,6 +66,34 @@ func Provision(w http.ResponseWriter, r *http.Request) {
 }
 
 func Deprovision(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Unable to delete resource", 503)
-	return
+	if r.Method != "DELETE" {
+		http.Error(w, "Method not allowd", 405)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), 503)
+		return
+	}
+
+	client := redis.NewClient()
+	defer client.Close()
+
+	key := r.Form.Get("id")
+	if key == "" {
+		http.Error(w, "Bad request", 400)
+		return
+	}
+
+	defer func() {
+		if target, ok := Expect[key]; ok {
+			delete(Expect, key)
+			close(target)
+		}
+	}()
+
+	if _, err := client.Del(key).Result(); err != nil {
+		panic(err)
+	}
+
+	w.Write([]byte("ok"))
 }
