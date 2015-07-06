@@ -35,11 +35,18 @@ func init() {
 			if !ok {
 				continue
 			}
-			val, err := client.Get(event.Key).Result()
-			if err != nil {
-				panic(err)
+			switch event.Action {
+			case "expired":
+				close(target)
+				break
+			case "append":
+				val, err := client.Get(event.Key).Result()
+				if err != nil {
+					panic(err)
+				}
+				target <- []byte(val)
+				break
 			}
-			target <- []byte(val)
 		}
 	}()
 
